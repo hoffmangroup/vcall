@@ -1,43 +1,109 @@
 #!/usr/bin/env python
-from __future__ import division
+from __future__ import division, print_function
 
 """
 vcall: recursively run version control commands
+
+cvs -n update has a bug where it will print things like
+
+  cvs update: New directory `search_spectrum_out' -- ignored
+
+for any directory that has been deleted in the repository. For more
+info Google [cvs-info "new directory" ignored]. I can't figure out a
+way to suppress this.
 """
 
 __version__ = "$Revision$"
 
-# Copyright 2008 Michael M. Hoffman <hoffman+software@ebi.ac.uk>
+# Copyright 2008, 2013 Michael M. Hoffman <hoffman+software@ebi.ac.uk>
 
 from os import walk
+import re
 import sys
 
-from path import path
+from optbuild import OptionBuilder, OptionBuilder_ShortOptWithSpace, ReturncodeError
 
-from optbuild import OptionBuilder, OptionBuilder_ShortOptWithSpace
-
+HG_PROG = OptionBuilder("hg")
 SVN_PROG = OptionBuilder("svn")
 CVS_PROG = OptionBuilder_ShortOptWithSpace("cvs")
+
+CVS_KWARGS_DEFAULT = dict(q=True) # quiet
+
+def make_args(command, subcommand, dirname):
+    if subcommand is not None:
+        return [command, subcommand, dirname]
+    else:
+        return [command, dirname]
+
+re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*' -- ignored$")
+def run_cvs(command, dirname, dirnames):
+    subcommand = None
+    kwargs = CVS_KWARGS_DEFAULT.copy()
+
+    if command == "status":
+        command = "update"
+        kwargs["n"] = True # don't do anything on disk
+
+    if command == "update":
+        subcommand = "-dP"
+
+    args = make_args(command, subcommand, dirname)
+
+    try:
+        output, error = CVS_PROG.getoutput_error(*args, **kwargs)
+    except ReturncodeError:
+        print("Error detected from CVS in %s; repeating" % dirname, file=sys.stderr)
+        CVS_PROG(*args, **kwargs)
+
+    if output:
+        print(output, end="")
+    if error:
+        error_lines = error.splitlines()
+        for error_line in error_lines:
+            if not re_cvs_new_directory_ignored.match(error_line):
+                print(error_line, file=sys.stderr)
+
+    del dirnames[:]
+
+re_svn_status_against = re.compile(r"^Status against revision:")
+def run_svn(command, dirname, dirnames):
+    subcommand = None
+    if command == "status":
+        subcommand = "-u"
+
+    args = make_args(command, subcommand, dirname)
+
+    try:
+        output = SVN_PROG.getoutput(*args)
+    except ReturncodeError:
+        print("Error detected from SVN in %s; repeating" % dirname, file=sys.stderr)
+        SVN_PROG(*args)
+
+    if output:
+        output_lines = output.splitlines()
+        for output_line in output_lines:
+            if not re_svn_status_against.match(output_line):
+                print(output_line, file=sys.stderr)
+
+    del dirnames[:]
+
 
 def vcall(command="status", *dirnames):
     if not dirnames:
         dirnames = ["."]
 
-    if command == "status":
-        cvs_command = "update"
-        cvs_kwargs = dict(n=True) # don't do anything on disk
-    else:
-        cvs_command = command
-        cvs_kwargs = {}
+    if command == "st":
+        command = "status"
 
     for dirname in dirnames:
         for branch_dirname, dirnames, filenames in walk(dirname):
-            if ".svn" in dirnames:
-                SVN_PROG(command, branch_dirname)
+            if ".hg" in dirnames:
+                HG_PROG(command, branch_dirname)
                 del dirnames[:]
+            elif ".svn" in dirnames:
+                run_svn(command, branch_dirname, dirnames)
             elif "CVS" in dirnames:
-                CVS_PROG(cvs_command, branch_dirname, **cvs_kwargs)
-                del dirnames[:]
+                run_cvs(command, branch_dirname, dirnames)
 
 def parse_options(args):
     from optparse import OptionParser
