@@ -36,7 +36,7 @@ def make_args(command, subcommand, dirname):
         return [command, dirname]
 
 re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*' -- ignored$")
-def run_cvs(command, dirname, dirnames):
+def run_cvs(command, dirname):
     subcommand = None
     kwargs = CVS_KWARGS_DEFAULT.copy()
 
@@ -63,10 +63,8 @@ def run_cvs(command, dirname, dirnames):
             if not re_cvs_new_directory_ignored.match(error_line):
                 print(error_line, file=sys.stderr)
 
-    del dirnames[:]
-
 re_svn_status_against = re.compile(r"^Status against revision:")
-def run_svn(command, dirname, dirnames):
+def run_svn(command, dirname):
     subcommand = None
     if command == "status":
         subcommand = "-u"
@@ -85,25 +83,24 @@ def run_svn(command, dirname, dirnames):
             if not re_svn_status_against.match(output_line):
                 print(output_line, file=sys.stderr)
 
-    del dirnames[:]
-
+RUNNERS = {".hg": HG_PROG,
+           ".svn": run_svn,
+           "CVS": run_cvs}
 
 def vcall(command="status", *dirnames):
     if not dirnames:
         dirnames = ["."]
 
-    if command == "st":
+    if command.startswith("st"):
         command = "status"
 
     for dirname in dirnames:
-        for branch_dirname, dirnames, filenames in walk(dirname):
-            if ".hg" in dirnames:
-                HG_PROG(command, branch_dirname)
-                del dirnames[:]
-            elif ".svn" in dirnames:
-                run_svn(command, branch_dirname, dirnames)
-            elif "CVS" in dirnames:
-                run_cvs(command, branch_dirname, dirnames)
+        for branch_dirname, child_dirnames, child_filenames in walk(dirname):
+            for signature_dirname, runner in RUNNERS.iteritems():
+                if signature_dirname in child_dirnames:
+                    runner(command, branch_dirname)
+                    del dirnames[:]
+                    break
 
 def parse_options(args):
     from optparse import OptionParser
