@@ -97,9 +97,10 @@ def vcall(command="status", *dirnames):
     for dirname in dirnames:
         for branch_dirname, child_dirnames, child_filenames in walk(dirname):
             for signature_dirname, runner in RUNNERS.iteritems():
+                # check for signature of any version control system
                 if signature_dirname in child_dirnames:
                     runner(command, branch_dirname)
-                    del dirnames[:]
+                    del child_dirnames[:]
                     break
 
 def parse_options(args):
