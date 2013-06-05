@@ -21,13 +21,15 @@ from os import walk
 import re
 import sys
 
-from optbuild import OptionBuilder, OptionBuilder_ShortOptWithSpace, ReturncodeError
+from optbuild import (OptionBuilder, OptionBuilder_ShortOptWithSpace,
+                      ReturncodeError)
 
 HG_PROG = OptionBuilder("hg")
 SVN_PROG = OptionBuilder("svn")
 CVS_PROG = OptionBuilder_ShortOptWithSpace("cvs")
 
-CVS_KWARGS_DEFAULT = dict(q=True) # quiet
+CVS_KWARGS_DEFAULT = dict(q=True)  # quiet
+
 
 def make_args(command, subcommand, dirname):
     if subcommand is not None:
@@ -35,14 +37,17 @@ def make_args(command, subcommand, dirname):
     else:
         return [command, dirname]
 
-re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*' -- ignored$")
+re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*'"
+                                          " -- ignored$")
+
+
 def run_cvs(command, dirname):
     subcommand = None
     kwargs = CVS_KWARGS_DEFAULT.copy()
 
     if command == "status":
         command = "update"
-        kwargs["n"] = True # don't do anything on disk
+        kwargs["n"] = True  # don't do anything on disk
 
     if command == "update":
         subcommand = "-dP"
@@ -52,7 +57,8 @@ def run_cvs(command, dirname):
     try:
         output, error = CVS_PROG.getoutput_error(*args, **kwargs)
     except ReturncodeError:
-        print("Error detected from CVS in %s; repeating" % dirname, file=sys.stderr)
+        print("Error detected from CVS in %s; repeating" % dirname,
+              file=sys.stderr)
         CVS_PROG(*args, **kwargs)
 
     if output:
@@ -64,6 +70,8 @@ def run_cvs(command, dirname):
                 print(error_line, file=sys.stderr)
 
 re_svn_status_against = re.compile(r"^Status against revision:")
+
+
 def run_svn(command, dirname):
     subcommand = None
     if command == "status":
@@ -74,7 +82,8 @@ def run_svn(command, dirname):
     try:
         output = SVN_PROG.getoutput(*args)
     except ReturncodeError:
-        print("Error detected from SVN in %s; repeating" % dirname, file=sys.stderr)
+        print("Error detected from SVN in %s; repeating" % dirname,
+              file=sys.stderr)
         SVN_PROG(*args)
 
     if output:
@@ -86,6 +95,7 @@ def run_svn(command, dirname):
 RUNNERS = {".hg": HG_PROG,
            ".svn": run_svn,
            "CVS": run_cvs}
+
 
 def vcall(command="status", *dirnames):
     if not dirnames:
@@ -103,6 +113,7 @@ def vcall(command="status", *dirnames):
                     del child_dirnames[:]
                     break
 
+
 def parse_options(args):
     from optparse import OptionParser
 
@@ -113,6 +124,7 @@ def parse_options(args):
     options, args = parser.parse_args(args)
 
     return options, args
+
 
 def main(args=sys.argv[1:]):
     options, args = parse_options(args)
