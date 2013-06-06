@@ -80,6 +80,8 @@ def run_svn(command, dirname):
     args = make_args(command, subcommand, dirname)
 
     try:
+        # XXX: this can be slow and blocking, it might be better to do
+        # this asynchronously
         output = SVN_PROG.getoutput(*args)
     except ReturncodeError:
         print("Error detected from SVN in %s; repeating" % dirname,
