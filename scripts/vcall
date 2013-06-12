@@ -18,6 +18,7 @@ __version__ = "$Revision$"
 # Copyright 2008, 2013 Michael M. Hoffman <hoffman+software@ebi.ac.uk>
 
 from os import walk
+from os.path import relpath
 import re
 import sys
 
@@ -52,7 +53,8 @@ def run_cvs(command, dirname):
     if command == "update":
         subcommand = "-dP"
 
-    args = make_args(command, subcommand, dirname)
+    ## relpath avoids "absolute pathname ... illegal for server" error
+    args = make_args(command, subcommand, relpath(dirname))
 
     try:
         output, error = CVS_PROG.getoutput_error(*args, **kwargs)
