@@ -4,6 +4,9 @@ from __future__ import division, print_function
 """
 vcall: recursively run version control commands
 
+version control systems supported: CVS, Subversion, Mercurial
+commands supported: status, update
+
 cvs -n update has a bug where it will print things like
 
   cvs update: New directory `search_spectrum_out' -- ignored
@@ -42,6 +45,15 @@ re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*'"
                                           " -- ignored$")
 
 
+def try_prog(prog, funcname, dirname, *args, **kwargs):
+    try:
+        return getattr(prog, funcname)(*args, **kwargs)
+    except ReturncodeError:
+        msg = "Error detected from %s in %s; repeating" % (program, dirname)
+        print(msg, file=sys.stderr)
+        prog(*args, **kwargs)
+
+
 def run_cvs(command, dirname):
     subcommand = None
     kwargs = CVS_KWARGS_DEFAULT.copy()
@@ -56,12 +68,7 @@ def run_cvs(command, dirname):
     ## relpath avoids "absolute pathname ... illegal for server" error
     args = make_args(command, subcommand, relpath(dirname))
 
-    try:
-        output, error = CVS_PROG.getoutput_error(*args, **kwargs)
-    except ReturncodeError:
-        print("Error detected from CVS in %s; repeating" % dirname,
-              file=sys.stderr)
-        CVS_PROG(*args, **kwargs)
+    output, error = try_prog(CVS_PROG, "getoutput_error", *args, **kwargs)
 
     if output:
         print(output, end="")
@@ -81,14 +88,7 @@ def run_svn(command, dirname):
 
     args = make_args(command, subcommand, dirname)
 
-    try:
-        # XXX: this can be slow and blocking, it might be better to do
-        # this asynchronously
-        output = SVN_PROG.getoutput(*args)
-    except ReturncodeError:
-        print("Error detected from SVN in %s; repeating" % dirname,
-              file=sys.stderr)
-        SVN_PROG(*args)
+    output = try_prog(SVN_PROG, "getoutput", *args)
 
     if output:
         output_lines = output.splitlines()
@@ -96,7 +96,20 @@ def run_svn(command, dirname):
             if not re_svn_status_against.match(output_line):
                 print(output_line, file=sys.stderr)
 
-RUNNERS = {".hg": HG_PROG,
+
+def run_hg(command, dirname):
+    kwargs = dict(cwd=dirname)
+
+    if command == "status":
+        command = "summary"
+        kwargs["remote"] = True
+    elif command == "update":
+        command = "pull"
+
+    HG_PROG(command, **kwargs)
+
+
+RUNNERS = {".hg": run_hg,
            ".svn": run_svn,
            "CVS": run_cvs}
 

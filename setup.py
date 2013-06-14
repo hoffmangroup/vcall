@@ -7,7 +7,7 @@ LONG_DESCRIPTION
 
 __version__ = "0.1.0a1"
 
-# Copyright 2008 Michael M. Hoffman <hoffman@cantab.net>
+# Copyright 2008, 2013 Michael M. Hoffman <hoffman@cantab.net>
 
 from ez_setup import use_setuptools
 use_setuptools()
@@ -36,5 +36,4 @@ setup(name=name,
       classifiers=classifiers,
       long_description=long_description,
       zip_safe=True,
-      scripts=["scripts/vcall"]
-      )
+      scripts=["scripts/vcall"])
