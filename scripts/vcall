@@ -25,10 +25,10 @@ from os.path import relpath
 import re
 import sys
 
-from optbuild import (OptionBuilder, OptionBuilder_ShortOptWithSpace,
-                      ReturncodeError)
+from optbuild import (OptionBuilder, OptionBuilder_LongOptWithSpace,
+                      OptionBuilder_ShortOptWithSpace, ReturncodeError)
 
-HG_PROG = OptionBuilder("hg")
+HG_PROG = OptionBuilder_LongOptWithSpace("hg")
 SVN_PROG = OptionBuilder("svn")
 CVS_PROG = OptionBuilder_ShortOptWithSpace("cvs")
 
@@ -41,17 +41,41 @@ def make_args(command, subcommand, dirname):
     else:
         return [command, dirname]
 
-re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*'"
-                                          " -- ignored$")
 
-
-def try_prog(prog, funcname, dirname, *args, **kwargs):
+def try_prog(prog, funcname, *args, **kwargs):
     try:
         return getattr(prog, funcname)(*args, **kwargs)
     except ReturncodeError:
-        msg = "Error detected from %s in %s; repeating" % (program, dirname)
+        # XXX: does str(prog) actually return the program name?
+
+        # XXX: would be nice if this actually printed the command name
+        # instead; can be done with optbuild
+
+        msg = "Error detected from %s; repeating" % prog
         print(msg, file=sys.stderr)
         prog(*args, **kwargs)
+
+
+def output_lines(output):
+    if output:
+        return output.splitlines()
+
+    return []
+
+
+def print_except(output, regex, dirname=None):
+    if dirname:
+        prefix = "%s:" % dirname
+    else:
+        prefix = ""
+
+    for line in output_lines(output):
+        if not regex.match(line):
+            print(prefix, line, file=sys.stderr)
+
+
+re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*'"
+                                          " -- ignored$")
 
 
 def run_cvs(command, dirname):
@@ -72,11 +96,9 @@ def run_cvs(command, dirname):
 
     if output:
         print(output, end="")
-    if error:
-        error_lines = error.splitlines()
-        for error_line in error_lines:
-            if not re_cvs_new_directory_ignored.match(error_line):
-                print(error_line, file=sys.stderr)
+
+    print_except(error, re_cvs_new_directory_ignored)
+
 
 re_svn_status_against = re.compile(r"^Status against revision:")
 
@@ -89,24 +111,35 @@ def run_svn(command, dirname):
     args = make_args(command, subcommand, dirname)
 
     output = try_prog(SVN_PROG, "getoutput", *args)
+    print_except(output, re_svn_status_against)
 
-    if output:
-        output_lines = output.splitlines()
-        for output_line in output_lines:
-            if not re_svn_status_against.match(output_line):
-                print(output_line, file=sys.stderr)
+
+re_hg_parent_branch = re.compile(r"^(?:parent|branch): ")
+re_hg_0_updates = re.compile(r"^0 files updated, 0 files merged, 0 files removed, 0 files unresolved$")
 
 
 def run_hg(command, dirname):
-    kwargs = dict(cwd=dirname)
+    kwargs = dict(cwd=dirname, quiet=True)
 
     if command == "status":
-        command = "summary"
-        kwargs["remote"] = True
+        args = ["summary", "--remote"]
     elif command == "update":
-        command = "pull"
+        try:
+            HG_PROG("pull", **kwargs)
+        except ReturncodeError, err:
+            if err.returncode == 1:
+                pass
 
-    HG_PROG(command, **kwargs)
+        # don't want quiet
+        output = try_prog(HG_PROG, "getoutput", "update", cwd=dirname)
+        print_except(output, re_hg_0_updates, dirname)
+
+        return
+    else:
+        args = [command]
+
+    output = try_prog(HG_PROG, "getoutput", *args, **kwargs)
+    print_except(output, re_hg_parent_branch, dirname)
 
 
 RUNNERS = {".hg": run_hg,
@@ -120,6 +153,8 @@ def vcall(command="status", *dirnames):
 
     if command.startswith("st"):
         command = "status"
+    elif command.startswith("up"):
+        command = "update"
 
     for dirname in dirnames:
         for branch_dirname, child_dirnames, child_filenames in walk(dirname):
