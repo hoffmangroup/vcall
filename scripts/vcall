@@ -115,7 +115,8 @@ def run_svn(command, dirname):
 
 
 re_hg_parent_branch = re.compile(r"^(?:parent|branch): ")
-re_hg_0_updates = re.compile(r"^0 files updated, 0 files merged, 0 files removed, 0 files unresolved$")
+re_hg_0_updates = re.compile(r"^0 files updated, 0 files merged,"
+                             " 0 files removed, 0 files unresolved$")
 
 
 def run_hg(command, dirname):
@@ -127,6 +128,7 @@ def run_hg(command, dirname):
         try:
             HG_PROG("pull", **kwargs)
         except ReturncodeError, err:
+            ## exit status 1 when there is nothing new incoming
             if err.returncode == 1:
                 pass
 
