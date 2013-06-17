@@ -13,7 +13,7 @@ cvs -n update has a bug where it will print things like
 
 for any directory that has been deleted in the repository. For more
 info Google [cvs-info "new directory" ignored]. I can't figure out a
-way to suppress this.
+way to suppress this, except to actually delete things locally.
 """
 
 __version__ = "$Revision$"
@@ -42,15 +42,10 @@ def make_args(command, subcommand, dirname):
         return [command, dirname]
 
 
-def try_prog(prog, funcname, *args, **kwargs):
+def try_prog(prog, funcname, dirname, *args, **kwargs):
     try:
         return getattr(prog, funcname)(*args, **kwargs)
     except ReturncodeError:
-        # XXX: does str(prog) actually return the program name?
-
-        # XXX: would be nice if this actually printed the command name
-        # instead; can be done with optbuild
-
         msg = "Error detected from %s; repeating" % prog
         print(msg, file=sys.stderr)
         prog(*args, **kwargs)
@@ -92,7 +87,7 @@ def run_cvs(command, dirname):
     ## relpath avoids "absolute pathname ... illegal for server" error
     args = make_args(command, subcommand, relpath(dirname))
 
-    output, error = try_prog(CVS_PROG, "getoutput_error", *args, **kwargs)
+    output, error = try_prog(CVS_PROG, "getoutput_error", dirname, *args, **kwargs)
 
     if output:
         print(output, end="")
@@ -110,7 +105,7 @@ def run_svn(command, dirname):
 
     args = make_args(command, subcommand, dirname)
 
-    output = try_prog(SVN_PROG, "getoutput", *args)
+    output = try_prog(SVN_PROG, "getoutput", dirname, *args)
     print_except(output, re_svn_status_against)
 
 
@@ -133,14 +128,14 @@ def run_hg(command, dirname):
                 pass
 
         # don't want quiet
-        output = try_prog(HG_PROG, "getoutput", "update", cwd=dirname)
+        output = try_prog(HG_PROG, "getoutput", dirname, "update", cwd=dirname)
         print_except(output, re_hg_0_updates, dirname)
 
         return
     else:
         args = [command]
 
-    output = try_prog(HG_PROG, "getoutput", *args, **kwargs)
+    output = try_prog(HG_PROG, "getoutput", dirname, *args, **kwargs)
     print_except(output, re_hg_parent_branch, dirname)
 
 
