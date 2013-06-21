@@ -46,7 +46,7 @@ def try_prog(prog, funcname, dirname, *args, **kwargs):
     try:
         return getattr(prog, funcname)(*args, **kwargs)
     except ReturncodeError:
-        msg = "Error detected from %s; repeating" % prog
+        msg = "Error detected from %s in %s; repeating" % (prog, dirname)
         print(msg, file=sys.stderr)
         prog(*args, **kwargs)
 
@@ -87,7 +87,8 @@ def run_cvs(command, dirname):
     ## relpath avoids "absolute pathname ... illegal for server" error
     args = make_args(command, subcommand, relpath(dirname))
 
-    output, error = try_prog(CVS_PROG, "getoutput_error", dirname, *args, **kwargs)
+    output, error = try_prog(CVS_PROG, "getoutput_error", dirname, *args,
+                             **kwargs)
 
     if output:
         print(output, end="")
@@ -109,25 +110,26 @@ def run_svn(command, dirname):
     print_except(output, re_svn_status_against)
 
 
-re_hg_parent_branch = re.compile(r"^(?:parent|branch): ")
+re_hg_quiet_summary = re.compile(r"^(?!(?:commit|update|remote): )"
+                                 "|(?:commit: \(clean\)|update: \(current\)"
+                                 "|remote: \(synced\))$")
 re_hg_0_updates = re.compile(r"^0 files updated, 0 files merged,"
                              " 0 files removed, 0 files unresolved$")
 
 
 def run_hg(command, dirname):
-    kwargs = dict(cwd=dirname, quiet=True)
+    kwargs = dict(cwd=dirname)
 
     if command == "status":
         args = ["summary", "--remote"]
     elif command == "update":
         try:
-            HG_PROG("pull", **kwargs)
+            HG_PROG("pull", quiet=True, **kwargs)
         except ReturncodeError, err:
             ## exit status 1 when there is nothing new incoming
             if err.returncode == 1:
                 pass
 
-        # don't want quiet
         output = try_prog(HG_PROG, "getoutput", dirname, "update", cwd=dirname)
         print_except(output, re_hg_0_updates, dirname)
 
@@ -136,7 +138,7 @@ def run_hg(command, dirname):
         args = [command]
 
     output = try_prog(HG_PROG, "getoutput", dirname, *args, **kwargs)
-    print_except(output, re_hg_parent_branch, dirname)
+    print_except(output, re_hg_quiet_summary, dirname)
 
 
 RUNNERS = {".hg": run_hg,

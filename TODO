@@ -1,4 +1,4 @@
 * change from script to module/setuptools console_script entry point
-* add prerequisites
+* add prerequisites to setup.py
 * write documentation
 * publish
