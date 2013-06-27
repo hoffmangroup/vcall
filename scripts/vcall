@@ -21,11 +21,10 @@ __version__ = "$Revision$"
 # Copyright 2008, 2013 Michael M. Hoffman <hoffman+software@ebi.ac.uk>
 
 from os import walk
-from os.path import relpath
 import re
 import sys
 
-from optbuild import (OptionBuilder, OptionBuilder_LongOptWithSpace,
+from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
                       OptionBuilder_ShortOptWithSpace, ReturncodeError)
 
 HG_PROG = OptionBuilder_LongOptWithSpace("hg")
@@ -85,10 +84,10 @@ def run_cvs(command, dirname):
         subcommand = "-dP"
 
     ## relpath avoids "absolute pathname ... illegal for server" error
-    args = make_args(command, subcommand, relpath(dirname))
+    args = make_args(command, subcommand, ".")
 
-    output, error = try_prog(CVS_PROG, "getoutput_error", dirname, *args,
-                             **kwargs)
+    output, error = try_prog(CVS_PROG, "getoutput_error", dirname,
+                             Cwd(dirname), *args, **kwargs)
 
     if output:
         print(output, end="")
