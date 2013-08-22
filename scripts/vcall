@@ -1,20 +1,13 @@
 #!/usr/bin/env python
+
+"""vcall: recursively run version control commands
+
+Run version control commands in multiple subdirectories.
+COMMAND is one of: status, update, upgrade.
+Version control systems supported: CVS, Subversion, Mercurial.
+"""
+
 from __future__ import division, print_function
-
-"""
-vcall: recursively run version control commands
-
-version control systems supported: CVS, Subversion, Mercurial
-commands supported: status, update
-
-cvs -n update has a bug where it will print things like
-
-  cvs update: New directory `search_spectrum_out' -- ignored
-
-for any directory that has been deleted in the repository. For more
-info Google [cvs-info "new directory" ignored]. I can't figure out a
-way to suppress this, except to actually delete things locally.
-"""
 
 __version__ = "$Revision$"
 
@@ -73,8 +66,20 @@ re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*'"
 
 
 def run_cvs(command, dirname):
+    """
+    cvs -n update has a bug where it will print things like
+
+      cvs update: New directory `search_spectrum_out' -- ignored
+
+    for any directory that has been deleted in the repository. For more
+    info Google [cvs-info "new directory" ignored]. I can't figure out a
+    way to suppress this, except to actually delete things locally.
+    """
     subcommand = None
     kwargs = CVS_KWARGS_DEFAULT.copy()
+
+    if command == "upgrade":
+        return
 
     if command == "status":
         command = "update"
@@ -121,6 +126,8 @@ def run_hg(command, dirname):
 
     if command == "status":
         args = ["summary", "--remote"]
+    elif command == "upgrade":
+        return
     elif command == "update":
         try:
             HG_PROG("pull", quiet=True, **kwargs)
@@ -145,33 +152,53 @@ RUNNERS = {".hg": run_hg,
            "CVS": run_cvs}
 
 
-def vcall(command="status", *dirnames):
-    if not dirnames:
-        dirnames = ["."]
-
-    if command.startswith("st"):
-        command = "status"
-    elif command.startswith("up"):
-        command = "update"
-
+def _vcall(command, dirnames, keep_going):
     for dirname in dirnames:
         for branch_dirname, child_dirnames, child_filenames in walk(dirname):
             for signature_dirname, runner in RUNNERS.iteritems():
                 # check for signature of any version control system
                 if signature_dirname in child_dirnames:
-                    runner(command, branch_dirname)
+                    try:
+                        runner(command, branch_dirname)
+                    except ReturncodeError:
+                        pass  # already reported earlier
                     del child_dirnames[:]
                     break
+
+
+def vcall(command="status", dirnames=[], keep_going=False):
+    if not dirnames:
+        dirnames = ["."]
+
+    if command.startswith("st"):
+        command = "status"
+    elif command.startswith("upg"):
+        command = "upgrade"
+    elif command.startswith("up"):
+        command = "update"
+
+    return _vcall(command, dirnames, keep_going)
 
 
 def parse_options(args):
     from optparse import OptionParser
 
-    usage = "%prog COMMAND [PATH...] [OPTION]..."
+    usage = "%prog [OPTION...] COMMAND [DIR...]"
     version = "%%prog %s" % __version__
-    parser = OptionParser(usage=usage, version=version)
+    doclines = __doc__.splitlines()
+    long_description = "\n".join(doclines[2:])
+
+    # XXX: should switch to argparse to get RawDescriptionHelpFormatter
+    parser = OptionParser(usage=usage, version=version,
+                          description=long_description)
+    parser.add_option("--keep-going", "-k", action="store_true",
+                      help="Continue after failure running version control"
+                      " system in one directory.")
 
     options, args = parser.parse_args(args)
+
+    if len(args) < 1:
+        parser.error("incorrect number of arguments")
 
     return options, args
 
@@ -179,7 +206,7 @@ def parse_options(args):
 def main(args=sys.argv[1:]):
     options, args = parse_options(args)
 
-    return vcall(*args)
+    return vcall(args[0], args[1:], options.keep_going)
 
 if __name__ == "__main__":
     sys.exit(main())

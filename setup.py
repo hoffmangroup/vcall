@@ -36,4 +36,5 @@ setup(name=name,
       classifiers=classifiers,
       long_description=long_description,
       zip_safe=True,
-      scripts=["scripts/vcall"])
+      scripts=["scripts/vcall"],
+      install_requires=["optbuild"])
