@@ -11,7 +11,7 @@ from __future__ import division, print_function
 
 __version__ = "$Revision$"
 
-# Copyright 2008, 2013 Michael M. Hoffman <hoffman+software@ebi.ac.uk>
+# Copyright 2008, 2013, 2014 Michael M. Hoffman <hoffman+software@ebi.ac.uk>
 
 from os import walk
 import re
@@ -152,7 +152,7 @@ RUNNERS = {".hg": run_hg,
            "CVS": run_cvs}
 
 
-def _vcall(command, dirnames, keep_going):
+def _vcall(command, dirnames):
     for dirname in dirnames:
         for branch_dirname, child_dirnames, child_filenames in walk(dirname):
             for signature_dirname, runner in RUNNERS.iteritems():
@@ -161,12 +161,12 @@ def _vcall(command, dirnames, keep_going):
                     try:
                         runner(command, branch_dirname)
                     except ReturncodeError:
-                        pass  # already reported earlier
+                        pass  # error reported to user by runner
                     del child_dirnames[:]
                     break
 
 
-def vcall(command="status", dirnames=[], keep_going=False):
+def vcall(command="status", dirnames=[]):
     if not dirnames:
         dirnames = ["."]
 
@@ -177,7 +177,7 @@ def vcall(command="status", dirnames=[], keep_going=False):
     elif command.startswith("up"):
         command = "update"
 
-    return _vcall(command, dirnames, keep_going)
+    return _vcall(command, dirnames)
 
 
 def parse_options(args):
@@ -191,9 +191,6 @@ def parse_options(args):
     # XXX: should switch to argparse to get RawDescriptionHelpFormatter
     parser = OptionParser(usage=usage, version=version,
                           description=long_description)
-    parser.add_option("--keep-going", "-k", action="store_true",
-                      help="Continue after failure running version control"
-                      " system in one directory.")
 
     options, args = parser.parse_args(args)
 
