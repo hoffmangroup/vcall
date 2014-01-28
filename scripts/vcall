@@ -51,6 +51,11 @@ def output_lines(output):
 
 
 def print_except(output, regex, dirname=None):
+    """
+    returns whether any output was produced
+    """
+    res = False
+
     if dirname:
         prefix = "%s:" % dirname
     else:
@@ -58,7 +63,10 @@ def print_except(output, regex, dirname=None):
 
     for line in output_lines(output):
         if not regex.match(line):
+            res = True
             print(prefix, line, file=sys.stderr)
+
+    return res
 
 
 re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*'"
@@ -94,11 +102,14 @@ def run_cvs(command, dirname):
     output, error = try_prog(CVS_PROG, "getoutput_error", dirname,
                              Cwd(dirname), *args, **kwargs)
 
+    res = False
     if output:
         print(output, end="")
+        res = True
 
-    print_except(error, re_cvs_new_directory_ignored)
+    res = print_except(error, re_cvs_new_directory_ignored) or res
 
+    return res
 
 re_svn_status_against = re.compile(r"^Status against revision:")
 
@@ -111,7 +122,7 @@ def run_svn(command, dirname):
     args = make_args(command, subcommand, dirname)
 
     output = try_prog(SVN_PROG, "getoutput", dirname, *args)
-    print_except(output, re_svn_status_against)
+    return print_except(output, re_svn_status_against)
 
 
 re_hg_quiet_summary = re.compile(r"^(?!(?:commit|update|remote): )"
@@ -144,7 +155,7 @@ def run_hg(command, dirname):
         args = [command]
 
     output = try_prog(HG_PROG, "getoutput", dirname, *args, **kwargs)
-    print_except(output, re_hg_quiet_summary, dirname)
+    return print_except(output, re_hg_quiet_summary, dirname)
 
 
 RUNNERS = {".hg": run_hg,
@@ -153,17 +164,24 @@ RUNNERS = {".hg": run_hg,
 
 
 def _vcall(command, dirnames):
+    affected_dirnames = []
+
     for dirname in dirnames:
         for branch_dirname, child_dirnames, child_filenames in walk(dirname):
             for signature_dirname, runner in RUNNERS.iteritems():
                 # check for signature of any version control system
                 if signature_dirname in child_dirnames:
                     try:
-                        runner(command, branch_dirname)
+                        if runner(command, branch_dirname):
+                            affected_dirnames.append(branch_dirname)
                     except ReturncodeError:
                         pass  # error reported to user by runner
                     del child_dirnames[:]
                     break
+
+    if affected_dirnames:
+        print()
+        print(sys.argv[0], "update", *affected_dirnames)
 
 
 def vcall(command="status", dirnames=[]):
