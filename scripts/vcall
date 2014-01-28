@@ -221,7 +221,7 @@ def parse_options(args):
 def main(args=sys.argv[1:]):
     options, args = parse_options(args)
 
-    return vcall(args[0], args[1:], options.keep_going)
+    return vcall(args[0], args[1:])
 
 if __name__ == "__main__":
     sys.exit(main())
