@@ -136,7 +136,14 @@ def run_hg(command, dirname):
     kwargs = dict(cwd=dirname)
 
     if command == "status":
-        args = ["summary", "--remote"]
+        args = ["summary"]
+        try:
+            HG_PROG("paths", "default", quiet=True, **kwargs)
+        except ReturncodeError, err:
+            if err.returncode != 1:
+                raise
+        else:
+            args.append("--remote")
     elif command == "upgrade":
         return
     elif command == "update":
@@ -144,8 +151,8 @@ def run_hg(command, dirname):
             HG_PROG("pull", quiet=True, **kwargs)
         except ReturncodeError, err:
             ## exit status 1 when there is nothing new incoming
-            if err.returncode == 1:
-                pass
+            if err.returncode != 1:
+                raise
 
         output = try_prog(HG_PROG, "getoutput", dirname, "update", cwd=dirname)
         print_except(output, re_hg_0_updates, dirname)
