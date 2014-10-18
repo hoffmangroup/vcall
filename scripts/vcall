@@ -16,6 +16,7 @@ __version__ = "$Revision$"
 from ConfigParser import NoSectionError, NoOptionError, SafeConfigParser
 from os import walk
 import re
+from shlex import split
 import sys
 
 from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
@@ -56,11 +57,13 @@ def get_config_args(prog, subcommand, dirname):
     option = "%s_%s" % (prog.prog, subcommand)  # ex: hg_summary
 
     try:
-        return config.get(section, option)
+        value = config.get(section, option)
     except NoSectionError:
         return
     except NoOptionError:
         return
+
+    return split(value)
 
 
 def try_prog(prog, funcname, dirname, *args, **kwargs):
