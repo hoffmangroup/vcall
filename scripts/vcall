@@ -11,20 +11,24 @@ from __future__ import division, print_function
 
 __version__ = "$Revision$"
 
-# Copyright 2008, 2013, 2014 Michael M. Hoffman <hoffman+software@ebi.ac.uk>
+# Copyright 2008, 2013, 2014 Michael M. Hoffman <mhoffman@uhnresearch.ca>
 
+from ConfigParser import NoSectionError, NoOptionError, SafeConfigParser
 from os import walk
 import re
 import sys
 
 from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
                       OptionBuilder_ShortOptWithSpace, ReturncodeError)
+from path import path
 
 HG_PROG = OptionBuilder_LongOptWithSpace("hg")
 SVN_PROG = OptionBuilder("svn")
 CVS_PROG = OptionBuilder_ShortOptWithSpace("cvs")
 
 CVS_KWARGS_DEFAULT = dict(q=True)  # quiet
+
+RC_FILENAME = ".vcallrc"
 
 
 def make_args(command, subcommand, dirname):
@@ -34,7 +38,37 @@ def make_args(command, subcommand, dirname):
         return [command, dirname]
 
 
+def parse_config(dirname):
+    config = SafeConfigParser(dict(dirname=dirname))
+    config.read(path(dirname) / RC_FILENAME)
+
+    return config
+
+
+def get_config_args(prog, subcommand, dirname):
+    config = parse_config(dirname)
+
+    if sys.stdin.isatty():
+        section = "interactive"
+    else:
+        section = "noninteractive"
+
+    option = "%s_%s" % (prog.prog, dirname)  # ex: hg_summary
+
+    try:
+        return config.get(section, option)
+    except NoSectionError:
+        return
+    except NoOptionError:
+        return
+
+
 def try_prog(prog, funcname, dirname, *args, **kwargs):
+    config_args = get_config_args(prog, args[0], dirname)
+    if config_args is not None:
+        args = config_args
+        kwargs = {}
+
     try:
         return getattr(prog, funcname)(*args, **kwargs)
     except ReturncodeError:
