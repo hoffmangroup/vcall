@@ -54,7 +54,7 @@ def get_config_args(prog, subcommand, dirname):
     else:
         section = "noninteractive"
 
-    option = "%s_%s" % (prog.prog, subcommand)  # ex: hg_summary
+    option = "%s.%s" % (prog.prog, subcommand)  # ex: hg.summary
 
     try:
         value = config.get(section, option)
