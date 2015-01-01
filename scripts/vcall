@@ -89,6 +89,8 @@ def output_lines(output):
 
 def print_except(output, regex, dirname=None):
     """
+    prints output except anything matching regex
+
     returns whether any output was produced
     """
     res = False
