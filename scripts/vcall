@@ -11,7 +11,7 @@ from __future__ import division, print_function
 
 __version__ = "$Revision$"
 
-# Copyright 2008, 2013, 2014 Michael M. Hoffman <mhoffman@uhnresearch.ca>
+# Copyright 2008, 2013, 2014, 2015 Michael M. Hoffman <mhoffman@uhnresearch.ca>
 
 from ConfigParser import NoSectionError, NoOptionError, SafeConfigParser
 from os import walk
@@ -78,6 +78,10 @@ def try_prog(prog, funcname, dirname, *args, **kwargs):
         msg = "Error detected from %s in %s; repeating" % (prog, dirname)
         print(msg, file=sys.stderr)
         prog(*args, **kwargs)
+    except OSError:
+        msg = "Error detected trying to run %s in %s" % (prog, dirname)
+        print(msg, file=sys.stderr)
+        raise
 
 
 def output_lines(output):
