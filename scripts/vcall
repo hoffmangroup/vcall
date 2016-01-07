@@ -11,10 +11,10 @@ from __future__ import division, print_function
 
 __version__ = "$Revision$"
 
-# Copyright 2008, 2013, 2014, 2015 Michael M. Hoffman <mhoffman@uhnresearch.ca>
+# Copyright 2008, 2013-2016 Michael M. Hoffman <michael.hoffman@utoronto.ca>
 
 from ConfigParser import NoSectionError, NoOptionError, SafeConfigParser
-from os import walk
+from os import devnull, walk
 import re
 from shlex import split
 import sys
@@ -22,6 +22,7 @@ import sys
 from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
                       OptionBuilder_ShortOptWithSpace, ReturncodeError)
 from path import path
+from tqdm import tqdm_gui
 
 HG_PROG = OptionBuilder_LongOptWithSpace("hg")
 SVN_PROG = OptionBuilder("svn")
@@ -30,6 +31,9 @@ CVS_PROG = OptionBuilder_ShortOptWithSpace("cvs")
 CVS_KWARGS_DEFAULT = dict(q=True)  # quiet
 
 RC_FILENAME = ".vcallrc"
+
+def null_file():
+    return open(devnull, "w")
 
 
 def make_args(command, subcommand, dirname):
@@ -139,7 +143,7 @@ def run_cvs(command, dirname):
     if command == "update":
         subcommand = "-dP"
 
-    ## relpath avoids "absolute pathname ... illegal for server" error
+    # relpath avoids "absolute pathname ... illegal for server" error
     args = make_args(command, subcommand, ".")
 
     output, error = try_prog(CVS_PROG, "getoutput_error", dirname,
@@ -193,7 +197,7 @@ def run_hg(command, dirname):
         try:
             HG_PROG("pull", quiet=True, **kwargs)
         except ReturncodeError, err:
-            ## exit status 1 when there is nothing new incoming
+            # exit status 1 when there is nothing new incoming
             if err.returncode != 1:
                 raise
 
@@ -213,21 +217,31 @@ RUNNERS = {".hg": run_hg,
            "CVS": run_cvs}
 
 
+def walk_dirname(command, dirname, null):
+    tqdm_walker = tqdm_gui(walk(dirname), dirname, unit="subdir", nested=True,
+                           file=null)
+
+    for branch_dirname, child_dirnames, child_filenames in tqdm_walker:
+        for signature_dirname, runner in RUNNERS.iteritems():
+            # check for signature of any version control system
+            if signature_dirname in child_dirnames:
+                try:
+                    if runner(command, branch_dirname):
+                        yield branch_dirname
+                except ReturncodeError:
+                    pass  # error reported to user by runner
+                del child_dirnames[:]
+                break
+
+
 def _vcall(command, dirnames):
     affected_dirnames = []
 
-    for dirname in dirnames:
-        for branch_dirname, child_dirnames, child_filenames in walk(dirname):
-            for signature_dirname, runner in RUNNERS.iteritems():
-                # check for signature of any version control system
-                if signature_dirname in child_dirnames:
-                    try:
-                        if runner(command, branch_dirname):
-                            affected_dirnames.append(branch_dirname)
-                    except ReturncodeError:
-                        pass  # error reported to user by runner
-                    del child_dirnames[:]
-                    break
+    # file=null: hide "experimental GUI" warning
+    with null_file() as null:
+        walker = tqdm_gui(dirnames, "directories", unit="dir", file=null)
+        for dirname in walker:
+            affected_dirnames.extend(walk_dirname(command, dirname, null))
 
     if affected_dirnames:
         print()
