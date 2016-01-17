@@ -218,10 +218,13 @@ RUNNERS = {".hg": run_hg,
 
 
 def walk_dirname(command, dirname, null):
-    tqdm_walker = tqdm_gui(walk(dirname), dirname, unit="subdir", nested=True,
-                           file=null)
+    walker = walk(dirname)
 
-    for branch_dirname, child_dirnames, child_filenames in tqdm_walker:
+    if sys.stdout.isatty():
+        walker = tqdm_gui(walker, dirname, unit="subdir", nested=True,
+                          file=null)
+
+    for branch_dirname, child_dirnames, child_filenames in walker:
         for signature_dirname, runner in RUNNERS.iteritems():
             # check for signature of any version control system
             if signature_dirname in child_dirnames:
