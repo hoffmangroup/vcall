@@ -37,4 +37,6 @@ setup(name=name,
       long_description=long_description,
       zip_safe=True,
       scripts=["scripts/vcall"],
-      install_requires=["optbuild", "matplotlib", "tqdm"])
+      install_requires=["optbuild", "tqdm"],
+      extras_require={'gui': ["matplotlib"]}
+)

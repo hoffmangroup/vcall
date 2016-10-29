@@ -22,7 +22,16 @@ import sys
 from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
                       OptionBuilder_ShortOptWithSpace, ReturncodeError)
 from path import path
-from tqdm import tqdm_gui
+
+from tqdm import tqdm, tqdm_gui
+
+try:
+    import matplotlib
+
+    PROGRESSERS = [tqdm_gui, tqdm]
+except ImportError:
+    PROGRESSERS = [tqdm]
+
 
 HG_PROG = OptionBuilder_LongOptWithSpace("hg")
 SVN_PROG = OptionBuilder("svn")
@@ -35,6 +44,16 @@ RC_FILENAME = ".vcallrc"
 def null_file():
     return open(devnull, "w")
 
+
+def progress(*args, **kwargs):
+    """
+    Try starting different progressers until one works.
+    """
+    for progresser in PROGRESSERS:
+        try:
+            return progresser(*args, **kwargs)
+        except RuntimeError:
+            pass
 
 def make_args(command, subcommand, dirname):
     if subcommand is not None:
@@ -221,8 +240,8 @@ def walk_dirname(command, dirname, null):
     walker = walk(dirname)
 
     if sys.stdout.isatty():
-        walker = tqdm_gui(walker, dirname, unit="subdir", nested=True,
-                          file=null)
+        # file=null: hide "experimental GUI" warning
+        walker = progress(walker, dirname, unit="subdir", nested=True, file=null)
 
     for branch_dirname, child_dirnames, child_filenames in walker:
         for signature_dirname, runner in RUNNERS.iteritems():
@@ -242,7 +261,7 @@ def _vcall(command, dirnames):
 
     # file=null: hide "experimental GUI" warning
     with null_file() as null:
-        walker = tqdm_gui(dirnames, "directories", unit="dir", file=null)
+        walker = progress(dirnames, "directories", unit="dir", file=null)
         for dirname in walker:
             affected_dirnames.extend(walk_dirname(command, dirname, null))
 
