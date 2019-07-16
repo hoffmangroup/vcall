@@ -7,15 +7,11 @@ COMMAND is one of: status, update, upgrade.
 Version control systems supported: CVS, Subversion, Mercurial.
 """
 
-from __future__ import division, print_function
-
-from __future__ import absolute_import
-import six
+from __future__ import absolute_import, division, print_function
 __version__ = "$Revision$"
 
-# Copyright 2008, 2013-2016 Michael M. Hoffman <michael.hoffman@utoronto.ca>
+# Copyright 2008, 2013-2016, 2019 Michael M. Hoffman
 
-from six.moves.configparser import NoSectionError, NoOptionError, SafeConfigParser
 from os import devnull, walk
 import re
 from shlex import split
@@ -24,11 +20,13 @@ import sys
 from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
                       OptionBuilder_ShortOptWithSpace, ReturncodeError)
 from path import path
-
+import six
+from six.moves.configparser import (NoSectionError, NoOptionError,
+                                    SafeConfigParser)
 from tqdm import tqdm, tqdm_gui
 
 try:
-    import matplotlib
+    import matplotlib  # noqa, checking import means can use GUI
 
     PROGRESSERS = [tqdm_gui, tqdm]
 except ImportError:
@@ -43,6 +41,7 @@ CVS_KWARGS_DEFAULT = dict(q=True)  # quiet
 
 RC_FILENAME = ".vcallrc"
 
+
 def null_file():
     return open(devnull, "w")
 
@@ -56,6 +55,7 @@ def progress(*args, **kwargs):
             return progresser(*args, **kwargs)
         except RuntimeError:
             pass
+
 
 def make_args(command, subcommand, dirname):
     if subcommand is not None:
@@ -179,6 +179,7 @@ def run_cvs(command, dirname):
 
     return res
 
+
 re_svn_status_against = re.compile(r"^Status against revision:")
 
 
@@ -194,8 +195,8 @@ def run_svn(command, dirname):
 
 
 re_hg_quiet_summary = re.compile(r"^(?!(?:commit|update|remote): )"
-                                 "|(?:commit: \(clean\)|update: \(current\)"
-                                 "|remote: \(synced\))$")
+                                 r"|(?:commit: \(clean\)|update: \(current\)"
+                                 r"|remote: \(synced\))$")
 re_hg_0_updates = re.compile(r"^0 files updated, 0 files merged,"
                              " 0 files removed, 0 files unresolved$")
 
@@ -243,7 +244,8 @@ def walk_dirname(command, dirname, null):
 
     if sys.stdout.isatty():
         # file=null: hide "experimental GUI" warning
-        walker = progress(walker, dirname, unit="subdir", nested=True, file=null)
+        walker = progress(walker, dirname, unit="subdir", nested=True,
+                          file=null)
 
     for branch_dirname, child_dirnames, child_filenames in walker:
         for signature_dirname, runner in six.iteritems(RUNNERS):
@@ -310,6 +312,7 @@ def main(args=sys.argv[1:]):
     options, args = parse_options(args)
 
     return vcall(args[0], args[1:])
+
 
 if __name__ == "__main__":
     sys.exit(main())
