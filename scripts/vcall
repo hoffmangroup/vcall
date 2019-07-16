@@ -9,11 +9,13 @@ Version control systems supported: CVS, Subversion, Mercurial.
 
 from __future__ import division, print_function
 
+from __future__ import absolute_import
+import six
 __version__ = "$Revision$"
 
 # Copyright 2008, 2013-2016 Michael M. Hoffman <michael.hoffman@utoronto.ca>
 
-from ConfigParser import NoSectionError, NoOptionError, SafeConfigParser
+from six.moves.configparser import NoSectionError, NoOptionError, SafeConfigParser
 from os import devnull, walk
 import re
 from shlex import split
@@ -205,7 +207,7 @@ def run_hg(command, dirname):
         args = ["summary"]
         try:
             HG_PROG("paths", "default", quiet=True, **kwargs)
-        except ReturncodeError, err:
+        except ReturncodeError as err:
             if err.returncode != 1:
                 raise
         else:
@@ -215,7 +217,7 @@ def run_hg(command, dirname):
     elif command == "update":
         try:
             HG_PROG("pull", quiet=True, **kwargs)
-        except ReturncodeError, err:
+        except ReturncodeError as err:
             # exit status 1 when there is nothing new incoming
             if err.returncode != 1:
                 raise
@@ -244,7 +246,7 @@ def walk_dirname(command, dirname, null):
         walker = progress(walker, dirname, unit="subdir", nested=True, file=null)
 
     for branch_dirname, child_dirnames, child_filenames in walker:
-        for signature_dirname, runner in RUNNERS.iteritems():
+        for signature_dirname, runner in six.iteritems(RUNNERS):
             # check for signature of any version control system
             if signature_dirname in child_dirnames:
                 try:
