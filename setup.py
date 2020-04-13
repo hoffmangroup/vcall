@@ -4,6 +4,10 @@
 
 from setuptools import setup
 
+classifiers = ["License :: OSI Approved :: GNU General Public License (GPL)",
+               "Natural Language :: English",
+               "Programming Language :: Python"]
+
 setup(name='vcall',
       version='0.1.0a3',
       description='execute version control commands for many directories',

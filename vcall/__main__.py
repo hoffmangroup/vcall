@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 
-"""vcall: recursively run version control commands
+"""vcall: recursively run version control commands.
 
 Run version control commands in multiple subdirectories.
 COMMAND is one of: status, update, upgrade.
 Version control systems supported: CVS, Subversion, Mercurial.
 """
 
+__version__ = "0.1.0a3"
+
 # Copyright 2008, 2013-2016, 2019, 2020 Michael M. Hoffman
 
 from configparser import (NoSectionError, NoOptionError, SafeConfigParser)
-from os import devnull, walk
-form pathlib import Path
+from os import walk
+from pathlib import Path
 import re
 from shlex import split
 import sys
@@ -38,14 +40,8 @@ CVS_KWARGS_DEFAULT = dict(q=True)  # quiet
 RC_FILENAME = ".vcallrc"
 
 
-def null_file():
-    return open(devnull, "w")
-
-
 def progress(*args, **kwargs):
-    """
-    Try starting different progressers until one works.
-    """
+    """Try starting different progressers until one works."""
     for progresser in PROGRESSERS:
         try:
             return progresser(*args, **kwargs)
@@ -54,6 +50,7 @@ def progress(*args, **kwargs):
 
 
 def make_args(command, subcommand, dirname):
+    """Make arguments for `subcommand`."""
     if subcommand is not None:
         return [command, subcommand, dirname]
     else:
@@ -61,13 +58,15 @@ def make_args(command, subcommand, dirname):
 
 
 def parse_config(dirname):
+    """Parse configuration for `dirname`."""
     config = SafeConfigParser(dict(dirname=dirname))
-    config.read(path(dirname) / RC_FILENAME)
+    config.read(Path(dirname) / RC_FILENAME)
 
     return config
 
 
 def get_config_args(prog, subcommand, dirname):
+    """Get arguments for `prog` `subcommand` in `dirname`."""
     config = parse_config(dirname)
 
     if sys.stdin.isatty():
@@ -88,6 +87,7 @@ def get_config_args(prog, subcommand, dirname):
 
 
 def try_prog(prog, funcname, dirname, *args, **kwargs):
+    """Try running `prog` via `funcname` in `dirname`."""
     config_args = get_config_args(prog, args[0], dirname)
     if config_args is not None:
         args = config_args
@@ -106,17 +106,18 @@ def try_prog(prog, funcname, dirname, *args, **kwargs):
 
 
 def output_lines(output):
+    """Get lines from `output`."""
     if output:
-        return output.splitlines()
+        # XXX: not the right place to do unicode conversion, should be done in optbuild
+        return output.decode().splitlines()
 
     return []
 
 
 def print_except(output, regex, dirname=None):
-    """
-    prints output except anything matching regex
+    """Print output except anything matching `regex`.
 
-    returns whether any output was produced
+    Return whether any output was produced.
     """
     res = False
 
@@ -139,6 +140,8 @@ re_cvs_new_directory_ignored = re.compile(r"^cvs update: New directory `.*'"
 
 def run_cvs(command, dirname):
     """
+    Run CVS `command` in `dirname`.
+
     cvs -n update has a bug where it will print things like
 
       cvs update: New directory `search_spectrum_out' -- ignored
@@ -180,6 +183,7 @@ re_svn_status_against = re.compile(r"^Status against revision:")
 
 
 def run_svn(command, dirname):
+    """Run Subversion `command` in `dirname`."""
     subcommand = None
     if command == "status":
         subcommand = "-u"
@@ -198,6 +202,7 @@ re_hg_0_updates = re.compile(r"^0 files updated, 0 files merged,"
 
 
 def run_hg(command, dirname):
+    """Run Mercurial `command` in `dirname`."""
     kwargs = dict(cwd=dirname)
 
     if command == "status":
@@ -235,13 +240,12 @@ RUNNERS = {".hg": run_hg,
            "CVS": run_cvs}
 
 
-def walk_dirname(command, dirname, null):
+def walk_dirname(command, dirname):
+    """Walk `dirname` with `command`."""
     walker = walk(dirname)
 
     if sys.stdout.isatty():
-        # file=null: hide "experimental GUI" warning
-        walker = progress(walker, dirname, unit="subdir", nested=True,
-                          file=null)
+        walker = progress(walker, "subdirectories" dirname, unit="dir")
 
     for branch_dirname, child_dirnames, child_filenames in walker:
         for signature_dirname, runner in RUNNERS.items():
@@ -259,11 +263,9 @@ def walk_dirname(command, dirname, null):
 def _vcall(command, dirnames):
     affected_dirnames = []
 
-    # file=null: hide "experimental GUI" warning
-    with null_file() as null:
-        walker = progress(dirnames, "directories", unit="dir", file=null)
-        for dirname in walker:
-            affected_dirnames.extend(walk_dirname(command, dirname, null))
+    walker = progress(dirnames, "directories", unit="dir", dynamic_ncols=True)
+    for dirname in walker:
+        affected_dirnames.extend(walk_dirname(command, dirname))
 
     if affected_dirnames:
         print()
@@ -271,6 +273,7 @@ def _vcall(command, dirnames):
 
 
 def vcall(command="status", dirnames=[]):
+    """Run version control `command` on `dirnames`."""
     if not dirnames:
         dirnames = ["."]
 
@@ -285,6 +288,9 @@ def vcall(command="status", dirnames=[]):
 
 
 def parse_options(args):
+    """Parse options in `args`."""
+    # XXX: should switch to argparse to get RawDescriptionHelpFormatter
+
     from optparse import OptionParser
 
     usage = "%prog [OPTION...] COMMAND [DIR...]"
@@ -292,7 +298,6 @@ def parse_options(args):
     doclines = __doc__.splitlines()
     long_description = "\n".join(doclines[2:])
 
-    # XXX: should switch to argparse to get RawDescriptionHelpFormatter
     parser = OptionParser(usage=usage, version=version,
                           description=long_description)
 
@@ -305,6 +310,7 @@ def parse_options(args):
 
 
 def main(args=sys.argv[1:]):
+    """Run from command line with `args`."""
     options, args = parse_options(args)
 
     return vcall(args[0], args[1:])
