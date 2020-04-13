@@ -245,7 +245,7 @@ def walk_dirname(command, dirname):
     walker = walk(dirname)
 
     if sys.stdout.isatty():
-        walker = progress(walker, "subdirectories" dirname, unit="dir")
+        walker = progress(walker, f" {dirname}", unit=" dir")
 
     for branch_dirname, child_dirnames, child_filenames in walker:
         for signature_dirname, runner in RUNNERS.items():
@@ -263,7 +263,7 @@ def walk_dirname(command, dirname):
 def _vcall(command, dirnames):
     affected_dirnames = []
 
-    walker = progress(dirnames, "directories", unit="dir", dynamic_ncols=True)
+    walker = progress(dirnames, "directories", unit=" dir")
     for dirname in walker:
         affected_dirnames.extend(walk_dirname(command, dirname))
 
