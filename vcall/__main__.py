@@ -30,7 +30,7 @@ try:
 except ImportError:
     PROGRESSERS = [tqdm]
 
-
+GIT_PROG = OptionBuilder("git")
 HG_PROG = OptionBuilder_LongOptWithSpace("hg")
 SVN_PROG = OptionBuilder("svn")
 CVS_PROG = OptionBuilder_ShortOptWithSpace("cvs")
@@ -39,6 +39,7 @@ CVS_KWARGS_DEFAULT = dict(q=True)  # quiet
 
 RC_FILENAME = ".vcallrc"
 
+VERBOSE = True
 
 def progress(*args, **kwargs):
     """Try starting different progressers until one works."""
@@ -108,7 +109,8 @@ def try_prog(prog, funcname, dirname, *args, **kwargs):
 def output_lines(output):
     """Get lines from `output`."""
     if output:
-        # XXX: not the right place to do unicode conversion, should be done in optbuild
+        # XXX: not the right place to do unicode conversion
+        # should be done in optbuild
         return output.decode().splitlines()
 
     return []
@@ -235,13 +237,36 @@ def run_hg(command, dirname):
     return print_except(output, re_hg_quiet_summary, dirname)
 
 
-RUNNERS = {".hg": run_hg,
+re_git_fetching_origin = re.compile(r"^Fetching origin$")
+re_git = re.compile(r"XXXcanthappenneedsomethingbetterhereXXX") # XXX
+
+
+def run_git(command, dirname):
+    """Run Git `command` in `dirname`."""
+    args_dirname = ["-C", dirname]
+
+    if command == "status":
+        args_remote_update = args_dirname + ["remote", "update"]
+        output, error = try_prog(GIT_PROG, "getoutput_error", dirname, *args_remote_update)
+        print_except(error, re_git_fetching_origin, dirname)
+
+        args = args_dirname + ["status", "--porcelain"]
+    else:
+        raise NotImplementedError
+
+    output = try_prog(GIT_PROG, "getoutput", dirname, *args)
+    return print_except(output, re_git, dirname)
+
+
+RUNNERS = {".git": run_git,
+           ".hg": run_hg,
            ".svn": run_svn,
            "CVS": run_cvs}
 
 
 def walk_dirname(command, dirname):
     """Walk `dirname` with `command`."""
+    # top-down, does directory before its subdirectories
     walker = walk(dirname)
 
     if sys.stdout.isatty():
@@ -252,11 +277,13 @@ def walk_dirname(command, dirname):
             # check for signature of any version control system
             if signature_dirname in child_dirnames:
                 try:
+                    if VERBOSE:
+                        print(f"\n{runner.__name__} {command} in {branch_dirname}:", file=sys.stderr)
                     if runner(command, branch_dirname):
                         yield branch_dirname
                 except ReturncodeError:
                     pass  # error reported to user by runner
-                del child_dirnames[:]
+
                 break
 
 
