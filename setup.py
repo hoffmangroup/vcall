@@ -1,42 +1,22 @@
 #!/usr/bin/env python
 
-"""vcall: DESCRIPTION
-
-LONG_DESCRIPTION
-"""
-
-__version__ = "0.1.0a2"
-
-# Copyright 2008, 2013, 2016 Michael M. Hoffman <hoffman@cantab.net>
-
-from ez_setup import use_setuptools
-use_setuptools()
+# Copyright 2008, 2013, 2016, 2020 Michael M. Hoffman <hoffman@cantab.net>
 
 from setuptools import setup
 
-doclines = __doc__.splitlines()
-name, short_description = doclines[0].split(": ")
-long_description = "\n".join(doclines[2:])
-
-url = "http://www.ebi.ac.uk/~hoffman/software/%s/" % name.lower()
-download_url = "%s%s-%s.tar.gz" % (url, name, __version__)
-
-classifiers = ["License :: OSI Approved :: GNU General Public License (GPL)",
-               "Natural Language :: English",
-               "Programming Language :: Python"]
-
-setup(name=name,
-      version=__version__,
-      description=short_description,
-      author="Michael Hoffman",
-      author_email="hoffman@cantab.net",
-      url=url,
-      download_url=download_url,
-      license="GNU GPLv2",
+setup(name='vcall',
+      version='0.1.0a3',
+      description='execute version control commands for many directories',
+      author='Michael Hoffman',
+      author_email='michael.hoffman@utoronto.ca',
+      license='GPLv3',
       classifiers=classifiers,
-      long_description=long_description,
-      zip_safe=True,
-      scripts=["scripts/vcall"],
+      package_data={"vcall": ["py.typed"]},
+      packages=['vcall'],
+      python_requires='>=3.6',
       install_requires=["optbuild", "tqdm"],
-      extras_require={'gui': ["matplotlib"]}
-)
+      extras_require={'gui': ["matplotlib"]},
+      entry_points={
+        'console_scripts': ['vcall=vcall.__main__:main'],
+      },
+      zip_safe=False)

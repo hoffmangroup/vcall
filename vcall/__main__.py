@@ -7,22 +7,18 @@ COMMAND is one of: status, update, upgrade.
 Version control systems supported: CVS, Subversion, Mercurial.
 """
 
-from __future__ import absolute_import, division, print_function
-__version__ = "$Revision$"
+# Copyright 2008, 2013-2016, 2019, 2020 Michael M. Hoffman
 
-# Copyright 2008, 2013-2016, 2019 Michael M. Hoffman
-
+from configparser import (NoSectionError, NoOptionError, SafeConfigParser)
 from os import devnull, walk
+form pathlib import Path
 import re
 from shlex import split
 import sys
 
 from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
                       OptionBuilder_ShortOptWithSpace, ReturncodeError)
-from path import path
-import six
-from six.moves.configparser import (NoSectionError, NoOptionError,
-                                    SafeConfigParser)
+
 from tqdm import tqdm, tqdm_gui
 
 try:
@@ -248,7 +244,7 @@ def walk_dirname(command, dirname, null):
                           file=null)
 
     for branch_dirname, child_dirnames, child_filenames in walker:
-        for signature_dirname, runner in six.iteritems(RUNNERS):
+        for signature_dirname, runner in RUNNERS.items():
             # check for signature of any version control system
             if signature_dirname in child_dirnames:
                 try:
