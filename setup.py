@@ -5,9 +5,9 @@
 LONG_DESCRIPTION
 """
 
-__version__ = "0.1.0a2"
+__version__ = "0.1.0a3"
 
-# Copyright 2008, 2013, 2016 Michael M. Hoffman <hoffman@cantab.net>
+# Copyright 2008, 2013, 2016, 2019 Michael M. Hoffman <hoffman@cantab.net>
 
 from ez_setup import use_setuptools
 use_setuptools()
@@ -18,7 +18,7 @@ doclines = __doc__.splitlines()
 name, short_description = doclines[0].split(": ")
 long_description = "\n".join(doclines[2:])
 
-url = "http://www.ebi.ac.uk/~hoffman/software/%s/" % name.lower()
+url = "http://bitbucket.org/hoffman/%s/" % name.lower()
 download_url = "%s%s-%s.tar.gz" % (url, name, __version__)
 
 classifiers = ["License :: OSI Approved :: GNU General Public License (GPL)",
@@ -38,5 +38,4 @@ setup(name=name,
       zip_safe=True,
       scripts=["scripts/vcall"],
       install_requires=["optbuild", "tqdm"],
-      extras_require={'gui': ["matplotlib"]}
-)
+      extras_require={'gui': ["matplotlib"]})

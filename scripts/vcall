@@ -19,7 +19,7 @@ import sys
 
 from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
                       OptionBuilder_ShortOptWithSpace, ReturncodeError)
-from path import path
+from pathlib import Path
 import six
 from six.moves.configparser import (NoSectionError, NoOptionError,
                                     SafeConfigParser)
@@ -66,7 +66,7 @@ def make_args(command, subcommand, dirname):
 
 def parse_config(dirname):
     config = SafeConfigParser(dict(dirname=dirname))
-    config.read(path(dirname) / RC_FILENAME)
+    config.read(Path(dirname) / RC_FILENAME)
 
     return config
 
