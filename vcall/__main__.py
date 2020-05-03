@@ -24,9 +24,9 @@ from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
 from tqdm import tqdm, tqdm_gui
 
 if getenv("DISPLAY"):
-    PROGRESSERS = [tqdm_gui, tqdm]
+    PROGRESSERS = [tqdm_gui]
 else:
-    PROGRESSERS = [tqdm]
+    PROGRESSERS = None
 
 GIT_PROG = OptionBuilder("git")
 HG_PROG = OptionBuilder_LongOptWithSpace("hg")
@@ -39,11 +39,14 @@ RC_FILENAME = ".vcallrc"
 
 VERBOSE = True
 
-def progress(*args, **kwargs):
+def progress(iterable, *args, **kwargs):
     """Try starting different progressers until one works."""
+    if not PROGRESSERS:
+        return iterable
+
     for progresser in PROGRESSERS:
         try:
-            return progresser(*args, **kwargs)
+            return progresser(iterable, *args, **kwargs)
         except RuntimeError:
             pass
 
