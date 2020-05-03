@@ -12,7 +12,7 @@ __version__ = "0.1.0a3"
 # Copyright 2008, 2013-2016, 2019, 2020 Michael M. Hoffman
 
 from configparser import (NoSectionError, NoOptionError, SafeConfigParser)
-from os import walk
+from os import getenv, walk
 from pathlib import Path
 import re
 from shlex import split
@@ -23,11 +23,9 @@ from optbuild import (Cwd, OptionBuilder, OptionBuilder_LongOptWithSpace,
 
 from tqdm import tqdm, tqdm_gui
 
-try:
-    import matplotlib  # noqa, checking import means can use GUI
-
+if getenv("DISPLAY"):
     PROGRESSERS = [tqdm_gui, tqdm]
-except ImportError:
+else:
     PROGRESSERS = [tqdm]
 
 GIT_PROG = OptionBuilder("git")
