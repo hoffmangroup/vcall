@@ -279,7 +279,7 @@ def walk_dirname(command, dirname):
             if signature_dirname in child_dirnames:
                 try:
                     if VERBOSE:
-                        print(f"\n{runner.__name__} {command} in {branch_dirname}:", file=sys.stderr)
+                        print(f"* {runner.__name__} {command}: {branch_dirname}", file=sys.stderr)
                     if runner(command, branch_dirname):
                         yield branch_dirname
                 except ReturncodeError:
